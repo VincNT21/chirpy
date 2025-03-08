@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/VincNT21/chirpy/internal/auth"
+	"github.com/VincNT21/chirpy/internal/database"
 	"github.com/google/uuid"
 )
 
@@ -21,7 +23,8 @@ func (cfg *apiConfig) handlerUsersCreate(w http.ResponseWriter, req *http.Reques
 	}
 
 	type parameters struct {
-		Email string `json:"email"`
+		Email    string `json:"email"`
+		Password string `json:"password"`
 	}
 
 	// Get the body from request
@@ -34,8 +37,18 @@ func (cfg *apiConfig) handlerUsersCreate(w http.ResponseWriter, req *http.Reques
 		return
 	}
 
+	// Hash user password
+	hash, err := auth.HashPassword(params.Password)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "couldn't hash password", err)
+		return
+	}
+
 	// Create User
-	user, err := cfg.db.CreateUser(req.Context(), params.Email)
+	user, err := cfg.db.CreateUser(req.Context(), database.CreateUserParams{
+		Email:          params.Email,
+		HashedPassword: hash,
+	})
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "couldn't create user in db", err)
 		return
