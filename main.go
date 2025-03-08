@@ -64,10 +64,15 @@ func main() {
 
 	// Register other handlers that can be called with path provided
 	mux.HandleFunc("GET /api/healthz", handlerReadiness)
+
 	mux.HandleFunc("GET /admin/metrics", apiCfg.handlerHits)
 	mux.HandleFunc("POST /admin/reset", apiCfg.handlerReset)
-	mux.HandleFunc("POST /api/validate_chirp", handlerValidity)
+
 	mux.HandleFunc("POST /api/users", apiCfg.handlerUsersCreate)
+
+	mux.HandleFunc("POST /api/chirps", apiCfg.handlerCreateChirp)
+	mux.HandleFunc("GET /api/chirps", apiCfg.HandlerAllChirps)
+	mux.HandleFunc("GET /api/chirps/{chirpID}", apiCfg.HandlerSingletonChirp)
 
 	// Create a new http server that will listens on port specified and uses the multiplexer for handling requests.
 	srv := &http.Server{
