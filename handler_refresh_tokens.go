@@ -51,7 +51,6 @@ func (cfg *apiConfig) handlerRefresh(w http.ResponseWriter, req *http.Request) {
 }
 
 func (cfg *apiConfig) handlerRevoke(w http.ResponseWriter, req *http.Request) {
-	type response struct{}
 	// Get the token bearer from header
 	refreshTokenString, err := auth.GetBearerToken(req.Header)
 	if err != nil {

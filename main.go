@@ -18,13 +18,14 @@ type apiConfig struct {
 	db             *database.Queries
 	platform       string
 	jwtsecret      string
+	polkaKey       string
 }
 
 func main() {
 	const filepathRoot = "."
 	const port = "8080"
 
-	// Get the db URL/Platform/secret from .env file
+	// Get the secret info from .env file
 	err := godotenv.Load()
 	if err != nil {
 		log.Fatal("Error loading .env file")
@@ -40,6 +41,10 @@ func main() {
 	jwtsecret := os.Getenv("SECRET")
 	if jwtsecret == "" {
 		log.Fatal("SECRET must be set")
+	}
+	polkaKey := os.Getenv("POLKA_KEY")
+	if polkaKey == "" {
+		log.Fatal("POLKA_KEY must be set")
 	}
 
 	// Open a connection to database
@@ -57,6 +62,7 @@ func main() {
 		db:             dbQueries,
 		platform:       platform,
 		jwtsecret:      jwtsecret,
+		polkaKey:       polkaKey,
 	}
 
 	// Create the request multiplexer (router) that will matches incoming request to registered handlers/
@@ -75,6 +81,7 @@ func main() {
 	mux.HandleFunc("POST /admin/reset", apiCfg.handlerReset)
 
 	mux.HandleFunc("POST /api/users", apiCfg.handlerUsersCreate)
+	mux.HandleFunc("PUT /api/users", apiCfg.handlerUserUpdate)
 	mux.HandleFunc("POST /api/login", apiCfg.handlerLogin)
 
 	mux.HandleFunc("POST /api/refresh", apiCfg.handlerRefresh)
@@ -83,6 +90,9 @@ func main() {
 	mux.HandleFunc("POST /api/chirps", apiCfg.handlerCreateChirp)
 	mux.HandleFunc("GET /api/chirps", apiCfg.HandlerAllChirps)
 	mux.HandleFunc("GET /api/chirps/{chirpID}", apiCfg.HandlerSingletonChirp)
+	mux.HandleFunc("DELETE /api/chirps/{chirpID}", apiCfg.HandlerDeleteChirp)
+
+	mux.HandleFunc("POST /api/polka/webhooks", apiCfg.HandlerChangeToRed)
 
 	// Create a new http server that will listens on port specified and uses the multiplexer for handling requests.
 	srv := &http.Server{

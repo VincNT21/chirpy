@@ -3,22 +3,12 @@ package main
 import (
 	"encoding/json"
 	"net/http"
-	"time"
 
 	"github.com/VincNT21/chirpy/internal/auth"
 	"github.com/VincNT21/chirpy/internal/database"
-	"github.com/google/uuid"
 )
 
-type User struct {
-	ID          uuid.UUID `json:"id"`
-	CreatedAt   time.Time `json:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at"`
-	Email       string    `json:"email"`
-	IsChirpyRed bool      `json:"is_chirpy_red"`
-}
-
-func (cfg *apiConfig) handlerUsersCreate(w http.ResponseWriter, req *http.Request) {
+func (cfg *apiConfig) handlerUserUpdate(w http.ResponseWriter, req *http.Request) {
 	type response struct {
 		User
 	}
@@ -28,11 +18,23 @@ func (cfg *apiConfig) handlerUsersCreate(w http.ResponseWriter, req *http.Reques
 		Password string `json:"password"`
 	}
 
+	// Get the access token from header
+	accessToken, err := auth.GetBearerToken(req.Header)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "couldn't find access token", err)
+		return
+	}
+	// Validate the JWT access token and get user ID associated
+	userID, err := auth.ValidateJWT(accessToken, cfg.jwtsecret)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "couldn't validate access token", err)
+		return
+	}
+
 	// Get the body from request
 	decoder := json.NewDecoder(req.Body)
 	params := parameters{}
-
-	err := decoder.Decode(&params)
+	err = decoder.Decode(&params)
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "couldn't decode parameters", err)
 		return
@@ -45,24 +47,25 @@ func (cfg *apiConfig) handlerUsersCreate(w http.ResponseWriter, req *http.Reques
 		return
 	}
 
-	// Create User
-	user, err := cfg.db.CreateUser(req.Context(), database.CreateUserParams{
+	// Update user info
+	user, err := cfg.db.UpdateUser(req.Context(), database.UpdateUserParams{
 		Email:          params.Email,
 		HashedPassword: hash,
+		ID:             userID,
 	})
 	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, "couldn't create user in db", err)
+		respondWithError(w, http.StatusInternalServerError, "couldn't update user info", err)
 		return
 	}
 
 	// Respond
-	respondWithJSON(w, http.StatusCreated, response{
+	respondWithJSON(w, http.StatusOK, response{
 		User: User{
 			ID:          user.ID,
 			CreatedAt:   user.CreatedAt,
 			UpdatedAt:   user.UpdatedAt,
 			Email:       user.Email,
 			IsChirpyRed: user.IsChirpyRed,
-		},
-	})
+		}})
+
 }

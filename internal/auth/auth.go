@@ -102,7 +102,7 @@ func ValidateJWT(tokenString, tokenSecret string) (uuid.UUID, error) {
 
 // Get JWT from headers in request
 func GetBearerToken(headers http.Header) (string, error) {
-	// Get Bearer from header-Authorization
+	// Get Authorization from header
 	authHeader := headers.Get("Authorization")
 	if authHeader == "" {
 		return "", errors.New("no auth header included in request")
@@ -129,4 +129,20 @@ func MakeRefreshToken() (string, error) {
 	refreshToken := hex.EncodeToString(randomData)
 
 	return refreshToken, nil
+}
+
+// Get API Key from headers in request
+func GetAPIKey(headers http.Header) (string, error) {
+	// Get Authorization from header
+	authHeader := headers.Get("Authorization")
+	if authHeader == "" {
+		return "", errors.New("no auth header included in request")
+	}
+	// Strip Authorization to get api key
+	splitAuth := strings.Split(authHeader, " ")
+	if len(splitAuth) != 2 || splitAuth[0] != "ApiKey" {
+		return "", errors.New("malformed authorization header")
+	}
+
+	return splitAuth[1], nil
 }
