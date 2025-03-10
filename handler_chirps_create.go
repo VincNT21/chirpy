@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/VincNT21/chirpy/internal/auth"
 	"github.com/VincNT21/chirpy/internal/database"
 	"github.com/go-faster/errors"
 	"github.com/google/uuid"
@@ -22,15 +23,28 @@ type Chirp struct {
 func (cfg *apiConfig) handlerCreateChirp(w http.ResponseWriter, req *http.Request) {
 
 	type parameters struct {
-		Body   string    `json:"body"`
-		UserID uuid.UUID `json:"user_id"`
+		Body string `json:"body"`
+	}
+
+	// Get JWT from header
+	token, err := auth.GetBearerToken(req.Header)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "couldn't find JWT", err)
+		return
+	}
+
+	// Check for validity
+	userID, err := auth.ValidateJWT(token, cfg.jwtsecret)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "couldn't validate JWT", err)
+		return
 	}
 
 	// Get the body from request
 	decoder := json.NewDecoder(req.Body)
 	params := parameters{}
 
-	err := decoder.Decode(&params)
+	err = decoder.Decode(&params)
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "couldn't decode parameters", err)
 		return
@@ -46,7 +60,7 @@ func (cfg *apiConfig) handlerCreateChirp(w http.ResponseWriter, req *http.Reques
 	// Create chirp in db
 	chirp, err := cfg.db.CreateChirp(req.Context(), database.CreateChirpParams{
 		Body:   cleanedBody,
-		UserID: params.UserID,
+		UserID: userID,
 	})
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "couldn't create new chirp", err)

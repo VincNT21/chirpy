@@ -17,13 +17,14 @@ type apiConfig struct {
 	fileserverHits atomic.Int32
 	db             *database.Queries
 	platform       string
+	jwtsecret      string
 }
 
 func main() {
 	const filepathRoot = "."
 	const port = "8080"
 
-	// Get the db URL/Platform from .env file
+	// Get the db URL/Platform/secret from .env file
 	err := godotenv.Load()
 	if err != nil {
 		log.Fatal("Error loading .env file")
@@ -35,6 +36,10 @@ func main() {
 	platform := os.Getenv("PLATFORM")
 	if platform == "" {
 		log.Fatal("PLATFORM must be set")
+	}
+	jwtsecret := os.Getenv("SECRET")
+	if jwtsecret == "" {
+		log.Fatal("SECRET must be set")
 	}
 
 	// Open a connection to database
@@ -51,6 +56,7 @@ func main() {
 		fileserverHits: atomic.Int32{},
 		db:             dbQueries,
 		platform:       platform,
+		jwtsecret:      jwtsecret,
 	}
 
 	// Create the request multiplexer (router) that will matches incoming request to registered handlers/
@@ -70,6 +76,9 @@ func main() {
 
 	mux.HandleFunc("POST /api/users", apiCfg.handlerUsersCreate)
 	mux.HandleFunc("POST /api/login", apiCfg.handlerLogin)
+
+	mux.HandleFunc("POST /api/refresh", apiCfg.handlerRefresh)
+	mux.HandleFunc("POST /api/revoke", apiCfg.handlerRevoke)
 
 	mux.HandleFunc("POST /api/chirps", apiCfg.handlerCreateChirp)
 	mux.HandleFunc("GET /api/chirps", apiCfg.HandlerAllChirps)
